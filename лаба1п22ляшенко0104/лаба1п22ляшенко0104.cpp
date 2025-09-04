@@ -1,8 +1,8 @@
-﻿// лаба1п22ляшенко0104.cpp : Этот файл содержит функцию "main". Здесь начинается и заканчивается выполнение программы.
-//
-
 #include <iostream>
 #include <algorithm>
+#include <Windows.h>
+#include <stdio.h>
+
 
 using namespace std;
 
@@ -23,6 +23,8 @@ int fib(int n)
 
 int main()
 {
+    // задание 1
+    /*
     cout << "Enter the array size" << endl;
     int arr_size;
     cin >> arr_size;
@@ -41,5 +43,56 @@ int main()
     }
 
     delete[] arr; // Освобождаем выделенную память
+    return 0;
+    */
+
+    //задание2
+
+    HANDLE hHeap = HeapCreate(0, 0, 0);
+
+    if (hHeap == NULL) {
+        cout << "Heap creating failed";
+        return 1;
+    }
+
+    size_t arr_size;
+    cout << "Enter the array size: ";
+    cin >> arr_size;
+
+    int** arr = (int**)(HeapAlloc(hHeap, HEAP_ZERO_MEMORY, arr_size * sizeof(int*)));
+    if (!arr) {
+        HeapDestroy(hHeap);
+        return 1;
+    }
+
+    for (size_t i = 0; i < arr_size; ++i) {
+        arr[i] = (int*)(HeapAlloc(hHeap, 0, sizeof(int)));
+        if (!arr[i]) {
+            cout << "Heap memory alloc is failed";
+            for (size_t j = 0; j < i; ++j) {
+                HeapFree(hHeap, 0, arr[j]);
+            }
+            HeapFree(hHeap, 0, arr);
+            HeapDestroy(hHeap);
+            return 1;
+        }
+        *arr[i] = fib(i+1);
+    }
+
+    reverse(arr, arr + arr_size);
+
+    cout << "Array created:" << endl;
+    for (size_t i = 0; i < arr_size; ++i) {
+        cout << *arr[i] << " ";
+    }
+    cout << endl;
+
+    for (size_t i = 0; i < arr_size; ++i) {
+        HeapFree(hHeap, 0, arr[i]);
+    }
+    HeapFree(hHeap, 0, arr);
+
+    HeapDestroy(hHeap);
+
     return 0;
 };
