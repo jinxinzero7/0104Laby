@@ -1,150 +1,200 @@
 #include <windows.h>
 #include <iostream>
+#include <chrono>
+#include <iomanip>
+#include <sstream>
 #include <string>
-#include <ctime>
-#include <vector>
 
-// Функция для преобразования std::string в std::wstring
-std::wstring stringToWideString(const std::string& str) {
-    if (str.empty()) return L"";
-    int size_needed = MultiByteToWideChar(CP_UTF8, 0, &str[0], (int)str.size(), NULL, 0);
-    std::wstring wstr(size_needed, 0);
-    MultiByteToWideChar(CP_UTF8, 0, &str[0], (int)str.size(), &wstr[0], size_needed);
-    return wstr;
-}
+using namespace std;
 
 int main() {
-    SetConsoleOutputCP(1251);
+    // создание путей файлов и директорий
+    LPCWSTR directoryName = L"C:\\Users\\student\\Desktop\\directoryLyash\\P22";
+    LPCWSTR fileName = L"C:\\Users\\student\\Desktop\\directoryLyash\\P22\\lyashenko.txt";
 
-    // ЗАДАНИЕ 1
-    std::cout << "=== ВЫПОЛНЕНИЕ ЗАДАНИЯ 1 ===" << std::endl;
-
-    // Создаем каталог с названием группы
-    std::wstring groupDir = L"P22";
-    CreateDirectoryW(groupDir.c_str(), NULL);
-    std::wcout << L"Создан каталог: " << groupDir << std::endl;
-
-    // Создаем файл с фамилией
-    std::wstring surnameFile = L"Lyshenko.txt";
-    std::wstring fullPath = groupDir + L"\\" + surnameFile;
-
-    // Записываем текущую дату в файл
-    HANDLE hFile = CreateFileW(fullPath.c_str(), GENERIC_WRITE, 0, NULL,
-        CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-    std::cout << "1";
-
-    if (hFile != INVALID_HANDLE_VALUE) {
-        // Получаем текущую дату
-        time_t now = time(0);
-        char dt[26];
-        ctime_s(dt, sizeof(dt), &now);
-
-        // Преобразуем дату в широкий формат
-        std::wstring wdt = stringToWideString(dt);
-
-        std::cout << "2";
-
-        DWORD bytesWritten;
-        // Записываем данные в файл
-        BOOL writeResult = WriteFile(hFile, wdt.c_str(),
-            static_cast<DWORD>(wdt.size() * sizeof(wchar_t)),
-            &bytesWritten, NULL);
-        std::cout << "3";
-        if (!writeResult) {
-            std::wcout << L"Ошибка записи в файл: " << GetLastError() << std::endl;
-        }
-        CloseHandle(hFile);
-        std::wcout << L"Создан файл с датой: " << fullPath << std::endl;
-        std::cout << "4";
+    // создание директории
+    if (CreateDirectory(directoryName, NULL)) {
+        cout << "Directory '" << directoryName << "' successfully created" << endl;
     }
-
-    // Читаем и выводим содержимое файла
-    hFile = CreateFileW(fullPath.c_str(), GENERIC_READ, 0, NULL,
-        OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-
-    if (hFile != INVALID_HANDLE_VALUE) {
-        wchar_t buffer[100];
-        DWORD bytesRead;
-        // Читаем данные из файла
-        BOOL readResult = ReadFile(hFile, buffer, sizeof(buffer) - sizeof(wchar_t),
-            &bytesRead, NULL);
-        if (readResult && bytesRead > 0) {
-            // Добавляем нулевой терминатор
-            buffer[bytesRead / sizeof(wchar_t)] = L'\0';
-            std::wcout << L"Содержимое файла: " << buffer << std::endl;
+    else {
+        DWORD error = GetLastError();
+        if (error == ERROR_ALREADY_EXISTS) {
+            cerr << "Directory '" << directoryName << "' is already exists" << endl;
         }
         else {
-            std::wcout << L"Ошибка чтения файла или файл пуст" << std::endl;
+            cerr << "Directory creating error. Error code: " << error << endl;
         }
+    }
+
+    // стоп
+    cin.get();
+
+    // создание файла внутри созданной папки
+    HANDLE hFile = CreateFile(fileName, GENERIC_READ | GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (hFile != INVALID_HANDLE_VALUE) {
+
+        // получаем текущее время
+        auto now = chrono::system_clock::now();
+        time_t now_time = chrono::system_clock::to_time_t(now);
+        tm timeinfo = {};
+        localtime_s(&timeinfo, &now_time);
+
+        // форматирование времени в const char*
+        stringstream ss;
+        ss << put_time(&timeinfo, "%Y-%m-%d %H:%M:%S");
+        string timeStr = ss.str();
+        const char* data = timeStr.c_str();
+        DWORD bytesWritten;
+
+        // стоп
+        cin.get();
+
+        // запись времени в файл
+        if (WriteFile(hFile, data, strlen(data), &bytesWritten, NULL)) {
+            cout << "File '" << fileName << "' successfully created." << endl;
+            cout << "Written " << bytesWritten << " bytes." << endl;
+        }
+        else {
+            DWORD error = GetLastError();
+            cerr << "Write error. Error code: " << error << endl;
+        }
+
         CloseHandle(hFile);
     }
+    else {
+        DWORD error = GetLastError();
+        if (error == ERROR_FILE_EXISTS) {
+            cout << "File '" << fileName << "' is already exists." << endl;
+        }
+        else {
+            cerr << "Failed to create file '" << fileName << " '. Error" << error << endl;
+        }
+    }
 
-    // Переименовываем файл
-    std::wstring newName = groupDir + L"\\Lyashenko_NA.txt";
-    if (MoveFileW(fullPath.c_str(), newName.c_str())) {
-        std::wcout << L"Файл переименован: " << newName << std::endl;
+    // стоп
+    cin.get();
+
+    // чтение файла
+    cout << "\nReading file content:" << endl;
+
+    HANDLE hReadFile = CreateFile(fileName, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (hReadFile != INVALID_HANDLE_VALUE) {
+        char buffer[1024];
+        DWORD bytesRead;
+
+        if (ReadFile(hReadFile, buffer, sizeof(buffer) - 1, &bytesRead, NULL)) {
+            
+            if (bytesRead > 0) {
+                // нулевой терминатор
+                buffer[bytesRead] = '\0';
+
+                cout << "Read " << bytesRead << " bytes: " << buffer << endl;
+            }
+            else {
+                cout << "File is empty." << endl;
+            }
+        }
+        else {
+            // обработка ошибки чтения
+            DWORD error = GetLastError();
+            cerr << "Read error. Error code: " << error << endl;
+        }
+
+        CloseHandle(hReadFile);
     }
     else {
-        std::wcout << L"Ошибка переименования файла" << std::endl;
+        DWORD error = GetLastError();
+        cerr << "Cannot open file for reading. Error code: " << error << endl;
     }
 
-    // Определяем размер файла
-    WIN32_FILE_ATTRIBUTE_DATA fileInfo;
-    if (GetFileAttributesExW(newName.c_str(), GetFileExInfoStandard, &fileInfo)) {
-        std::wcout << L"Размер файла: " << fileInfo.nFileSizeLow << L" байт" << std::endl;
+    // стоп 
+    cin.get();
+
+    // переименование файла
+    LPCWSTR newFileName = L"C:\\Users\\student\\Desktop\\directoryLyash\\newDirectory\\lyashenkoNA.txt";
+
+    if (MoveFile(fileName, newFileName)) {
+        cout << "File successfully renamed to '" << newFileName << " '." << endl;
     }
     else {
-        std::wcout << L"Ошибка получения размера файла" << std::endl;
+        DWORD error = GetLastError();
+        cerr << "Cannot rename the file. Error code: " << error << endl;
     }
 
-    // Удаляем файл и каталог
-    if (DeleteFileW(newName.c_str()) && RemoveDirectoryW(groupDir.c_str())) {
-        std::wcout << L"Файл и каталог удалены" << std::endl;
+    // стоп
+    cin.get();
+
+    // информация о файле
+
+    HANDLE hReadInfoFile = CreateFile(newFileName, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, 0, NULL);
+    if (hFile != INVALID_HANDLE_VALUE) {
+        BY_HANDLE_FILE_INFORMATION fileInfo;
+        if (GetFileInformationByHandle(hReadInfoFile, &fileInfo)) {
+            cout << "File name: " << newFileName << endl;
+            cout << "File size: " << fileInfo.nFileSizeLow << " byte" << endl;
+        }
+        else {
+            DWORD error = GetLastError();
+            cerr << "Cannot get info about file. Error code: " << error << endl;
+        }
+        CloseHandle(hReadInfoFile);
     }
     else {
-        std::wcout << L"Ошибка удаления файла или каталога" << std::endl;
+        DWORD error = GetLastError();
+        cerr << "Cannot open file. Error code: " << error << endl;
     }
 
-    // Выводим список файлов и каталогов на диске C:
-    std::wcout << L"\nСодержимое диска C:\\:" << std::endl;
-    WIN32_FIND_DATAW findData;
-    HANDLE hFind = FindFirstFileW(L"C:\\*", &findData);
+    //стоп 
+    cin.get();
+
+    // удаление
+    if (DeleteFile(newFileName)) {
+        cout << "File '" << newFileName << "' successfully deleted." << endl;
+    }
+    else {
+        DWORD error = GetLastError();
+        cerr << "Cannot delete file '" << newFileName << " '. Error code:" << error << endl;
+    }
+
+    // стоп
+    cin.get();
+
+    //удаление каталога
+    if (RemoveDirectory(directoryName)) {
+        cout << "Directory '" << directoryName << "' succesfully deleted." << endl;
+    }
+    else {
+        DWORD error = GetLastError();
+        cerr << "Cannot delete directory. Error code: " << error << endl;
+    }
+
+    // показ всех каталогов в папке targerDirectory
+    LPCWSTR targetDirectory = L"C:\\testp22\\*";
+
+    cout << "\nDirectories in C:\\testp22" << endl;
+    //стоп
+    cin.get();
+
+    WIN32_FIND_DATA findFileData;
+    HANDLE hFind = FindFirstFile(targetDirectory, &findFileData);
 
     if (hFind != INVALID_HANDLE_VALUE) {
+        int dirCount = 0;
         do {
-            std::wcout << findData.cFileName << std::endl;
-        } while (FindNextFileW(hFind, &findData) != 0);
-        FindClose(hFind);
-    }
-
-    // ЗАДАНИЕ 2 (10 вариант)
-    std::wcout << L"\n=== ВЫПОЛНЕНИЕ ЗАДАНИЯ 2 ===" << std::endl;
-
-    // Создаем список файлов в текущей директории
-    std::wstring outputFile = L"file_list.txt";
-    HANDLE hOutput = CreateFileW(outputFile.c_str(), GENERIC_WRITE, 0, NULL,
-        CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-
-    if (hOutput != INVALID_HANDLE_VALUE) {
-        hFind = FindFirstFileW(L"*", &findData);
-        if (hFind != INVALID_HANDLE_VALUE) {
-            do {
-                if (!(findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
-                    DWORD bytesWritten;
-                    std::wstring fileName = std::wstring(findData.cFileName) + L"\r\n";
-                    // Записываем данные в файл
-                    BOOL writeResult = WriteFile(hOutput, fileName.c_str(),
-                        static_cast<DWORD>(fileName.size() * sizeof(wchar_t)),
-                        &bytesWritten, NULL);
-                    if (!writeResult) {
-                        std::wcout << L"Ошибка записи в файл списка" << std::endl;
-                    }
+            if (findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+                if (wcscmp(findFileData.cFileName, L".") != 0 &&
+                    wcscmp(findFileData.cFileName, L"..") != 0) {
+                    wcout << L"[" << ++dirCount << L"] " << findFileData.cFileName << endl;
                 }
-            } while (FindNextFileW(hFind, &findData) != 0);
-            FindClose(hFind);
-        }
-        CloseHandle(hOutput);
-        std::wcout << L"Список файлов сохранен в: " << outputFile << std::endl;
+            }
+        } while (FindNextFile(hFind, &findFileData) != 0);
+
+        FindClose(hFind);
+        cout << "Total directories found: " << dirCount << endl;
+    }
+    else {
+        DWORD error = GetLastError();
+        wcerr << L"Cannot enumerate directories in: " << targetDirectory << L". Error code: " << error << endl;
     }
 
     return 0;
