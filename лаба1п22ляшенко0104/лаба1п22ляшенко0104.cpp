@@ -1,8 +1,6 @@
 #include <iostream>
 #include <algorithm>
 #include <Windows.h>
-#include <stdio.h>
-
 
 using namespace std;
 
@@ -21,38 +19,153 @@ int fib(int n)
     return b;
 }
 
-int main()
+void demo_malloc_free()
 {
-    // задание 1
-    /*
-    cout << "Enter the array size" << endl;
+    cout << "malloc/free:" << endl;
+    cout << "Enter the array size: ";
     int arr_size;
     cin >> arr_size;
-    cout << endl;
 
-    int* arr = new int[arr_size];
-    for (int i = 0; i < arr_size; i++)
-    {
-        arr[i] = fib(i+1);
+    int* arr = (int*)malloc(arr_size * sizeof(int));
+    if (arr == NULL) {
+        cout << "Memory allocation failed" << endl;
+        return;
     }
 
-    std::reverse(arr, arr + arr_size);
+    for (int i = 0; i < arr_size; i++)
+    {
+        arr[i] = fib(i + 1);
+    }
 
+    cout << "Original array: ";
     for (int i = 0; i < arr_size; i++) {
         cout << arr[i] << " ";
     }
+    cout << endl;
 
-    delete[] arr; // Освобождаем выделенную память
-    return 0;
-    */
+    reverse(arr, arr + arr_size);
 
-    //задание2
+    cout << "Reversed array: ";
+    for (int i = 0; i < arr_size; i++) {
+        cout << arr[i] << " ";
+    }
+    cout << endl;
+
+    free(arr);
+}
+
+void demo_new_delete()
+{
+    cout << "new/delete:" << endl;
+    cout << "Enter the array size: ";
+    int arr_size;
+    cin >> arr_size;
+
+    int* arr = new int[arr_size];
+
+    for (int i = 0; i < arr_size; i++)
+    {
+        arr[i] = fib(i + 1);
+    }
+
+    cout << "Original array: ";
+    for (int i = 0; i < arr_size; i++) {
+        cout << arr[i] << " ";
+    }
+    cout << endl;
+
+    reverse(arr, arr + arr_size);
+
+    cout << "Reversed array: ";
+    for (int i = 0; i < arr_size; i++) {
+        cout << arr[i] << " ";
+    }
+    cout << endl;
+
+    delete[] arr;
+}
+
+void demo_virtual_alloc()
+{
+    cout << "VirtualAlloc/VirtualFree:" << endl;
+    cout << "Enter the array size: ";
+    int arr_size;
+    cin >> arr_size;
+
+    LPVOID mem = VirtualAlloc(NULL, arr_size * sizeof(int), MEM_COMMIT, PAGE_READWRITE);
+    if (mem == NULL) {
+        cout << "VirtualAlloc failed" << endl;
+        return;
+    }
+
+    int* arr = (int*)mem;
+
+    for (int i = 0; i < arr_size; i++)
+    {
+        arr[i] = fib(i + 1);
+    }
+
+    cout << "Original array: ";
+    for (int i = 0; i < arr_size; i++) {
+        cout << arr[i] << " ";
+    }
+    cout << endl;
+
+    reverse(arr, arr + arr_size);
+
+    cout << "Reversed array: ";
+    for (int i = 0; i < arr_size; i++) {
+        cout << arr[i] << " ";
+    }
+    cout << endl;
+
+    VirtualFree(mem, 0, MEM_RELEASE);
+}
+
+void demo_heap_alloc()
+{
+    cout << "HeapAlloc/HeapFree:" << endl;
+    cout << "Enter the array size: ";
+    int arr_size;
+    cin >> arr_size;
+
+    HANDLE hHeap = GetProcessHeap();
+    int* arr = (int*)HeapAlloc(hHeap, 0, arr_size * sizeof(int));
+    if (arr == NULL) {
+        cout << "HeapAlloc failed" << endl;
+        return;
+    }
+
+    for (int i = 0; i < arr_size; i++)
+    {
+        arr[i] = fib(i + 1);
+    }
+
+    cout << "Original array: ";
+    for (int i = 0; i < arr_size; i++) {
+        cout << arr[i] << " ";
+    }
+    cout << endl;
+
+    reverse(arr, arr + arr_size);
+
+    cout << "Reversed array: ";
+    for (int i = 0; i < arr_size; i++) {
+        cout << arr[i] << " ";
+    }
+    cout << endl;
+
+    HeapFree(hHeap, 0, arr);
+}
+
+void demo_custom_heap()
+{
+    cout << "Custom Heap:" << endl;
 
     HANDLE hHeap = HeapCreate(0, 0, 0);
-
     if (hHeap == NULL) {
         cout << "Heap creating failed";
-        return 1;
+        return;
     }
 
     size_t arr_size;
@@ -62,7 +175,7 @@ int main()
     int** arr = (int**)(HeapAlloc(hHeap, HEAP_ZERO_MEMORY, arr_size * sizeof(int*)));
     if (!arr) {
         HeapDestroy(hHeap);
-        return 1;
+        return;
     }
 
     for (size_t i = 0; i < arr_size; ++i) {
@@ -74,14 +187,20 @@ int main()
             }
             HeapFree(hHeap, 0, arr);
             HeapDestroy(hHeap);
-            return 1;
+            return;
         }
-        *arr[i] = fib(i+1);
+        *arr[i] = fib(i + 1);
     }
+
+    cout << "Original array: ";
+    for (size_t i = 0; i < arr_size; ++i) {
+        cout << *arr[i] << " ";
+    }
+    cout << endl;
 
     reverse(arr, arr + arr_size);
 
-    cout << "Array created:" << endl;
+    cout << "Reversed array: ";
     for (size_t i = 0; i < arr_size; ++i) {
         cout << *arr[i] << " ";
     }
@@ -91,8 +210,26 @@ int main()
         HeapFree(hHeap, 0, arr[i]);
     }
     HeapFree(hHeap, 0, arr);
-
     HeapDestroy(hHeap);
+}
+
+int main()
+{
+    SetConsoleOutputCP(1251);
+
+    demo_malloc_free();
+    cout << endl;
+
+    demo_new_delete();
+    cout << endl;
+
+    demo_virtual_alloc();
+    cout << endl;
+
+    demo_heap_alloc();
+    cout << endl;
+
+    demo_custom_heap();
 
     return 0;
-};
+}
